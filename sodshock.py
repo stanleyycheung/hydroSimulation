@@ -37,7 +37,7 @@ def advect(x, xi, q, ui, dt, fluxlim, nghost):
             b = min([2., r[i]])
             phi[i] = max([0., a, b])
     elif fluxlim == 'van Leer':
-        phi = np.zeros(nx+1)
+        phi = (r + abs(r))/(1 + abs(r))
     else:
         raise Exception("Choose a valid flux limiter")
 
@@ -201,8 +201,8 @@ for it in range(1, nt+1):
     time[it] = time[it-1]+dt
     print("Time step: {}, Time = {}, dt = {}".format(it, time[it], dt))
     np.savetxt('outputsod/output{:05d}.dat'.format(counter),
-               np.c_[x, qrho, qrhou], header='{}'.format(time[it-1]))
-    hydrostep(x, xi, qrho, qrhou, qrhoe, gamma, dt, 'mirror')
+               np.c_[x, qrho, qrhou, qrhoe], header='{}'.format(time[it-1]))
+    hydrostep(x, xi, qrho, qrhou, qrhoe, gamma, dt, 'mirror', 'van Leer')
     rho[:, it] = qrho
     rhou[:, it] = qrhou
     rhoe[:, it] = qrhoe

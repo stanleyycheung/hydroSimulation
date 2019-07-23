@@ -7,6 +7,9 @@ import glob
 path = 'outputsod/output*'
 files = glob.glob(path)
 counter = 1
+gamma = 7/5
+
+plt.rcParams["figure.figsize"] = [8, 8]
 
 
 for file in sorted(files):
@@ -14,12 +17,40 @@ for file in sorted(files):
     x = data[:, 0]
     rho = data[:, 1]
     rhou = data[:, 2]
+    rhoue = data[:, 3]
 
-    plt.plot(x, rho)
+    u = rhou/rho
+    e_th = rhoue/rho - u**2/2
+    p = (gamma-1)*rho*e_th
+
+    plt.subplot(2, 2, 1)
+    plt.plot(x, rho, '.-')
     plt.grid()
     plt.xlabel('x')
     plt.ylabel(r'$\rho$')
-    plt.ylim(0, 1.2)
+    plt.ylim(0, 1.1)
+
+    plt.subplot(2, 2, 2)
+    plt.plot(x, u, '.')
+    plt.grid()
+    plt.ylim(0, 0.85)
+    plt.xlabel('x')
+    plt.ylabel(r'$u$')
+
+    plt.subplot(2, 2, 3)
+    plt.plot(x, p, '.-')
+    plt.grid()
+    plt.xlabel('x')
+    plt.ylabel(r'$p$')
+
+    plt.subplot(2, 2, 4)
+    plt.plot(x, e_th, '.')
+    plt.grid()
+    plt.xlabel('x')
+    plt.ylabel(r'$e_{th}$')
+    plt.ylim(0, 2.6)
+
+    plt.tight_layout()
     plt.savefig('moviesod/img{:05d}.png'.format(counter))
     plt.clf()
 
