@@ -107,3 +107,66 @@ def hydrostep(x, xi, rho, rhou, e, gamma, dt, bc, fluxlim='donor-cell'):
 
     # Re-impose boundary conditions a last time (not strictly necessary)
     boundary(rho, rhou, bc)
+
+
+def initial(option):
+    xmid = 0.5*(x0+x1)
+
+    # Gaussian
+    if option == 'Gaussian':
+        dg = 0.1*(x1-x0)
+        result = 1 + 3*np.exp(-(x-xmid)**2/dg**2)
+
+    # Step function
+    if option == 'Step':
+        result = np.zeros(len(x))
+        for i in range(0, len(x)):
+            if i < xmid:
+                result[i] = 5
+            else:
+                result[i] = 1
+    return result
+
+
+# define a test problem
+nx = 100
+nt = 1000
+x0 = 0
+x1 = 100
+dt = 0.25
+cfl = 0.5
+x = x0 + (x1-x0)*(np.arange(nx)/(nx-1.))
+gamma = 7./5.
+rho = np.zeros((nx, nt+1))
+rhou = np.zeros((nx, nt+1))
+e = np.ones(nx)
+time = np.zeros(nt+1)
+rho[:, 0] = initial('Step')
+
+# plot initial conditions
+plt.plot(x, rho[:, 0])
+plt.grid()
+plt.show()
+
+# additional arrays needed
+xi = np.zeros(nx+1)
+xi[1:nx] = 0.5 * (x[1:nx] + x[0:nx-1])
+xi[0] = 2*xi[1] - xi[2]
+xi[nx] = 2*xi[nx-1] - xi[nx-2]
+dx = (xi[1:nx+1] - xi[0:nx])
+
+counter = 1
+for it in range(1, nt+1):
+    qrho = rho[:, it-1]
+    qrhou = rhou[:, it-1]
+    cs = np.sqrt(gamma*(gamma-1)*e)
+    dum = dx/(cs+abs(qrhou/qrho))
+    dt = cfl*min(dum)
+    time[it] = time[it-1]+dt
+    # print("Time step: {}, Time = {}, Dt = {}".format(it, time[it], dt))
+    np.savetxt('output2/output{:05d}.dat'.format(counter),
+               np.c_[x, qrho, qrho], header='{}'.format(time[it-1]))
+    hydrostep(x, xi, qrho, qrhou, e, gamma, dt, 'mirror')
+    rho[:, it] = qrho
+    rhou[:, it] = qrhou
+    counter += 1
