@@ -1,4 +1,4 @@
-# ffmpeg -r 60 -f image2 -s 1920x1080 -i moviesod/img%05d.png -vcodec libx264 -crf 25  -pix_fmt yuv420p moviesod.mp4
+# ffmpeg -r 120 -f image2 -s 1920x1080 -i moviesod/img%05d.png -vcodec libx264 -crf 25  -pix_fmt yuv420p moviesod2.mp4
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -48,7 +48,7 @@ for file in sorted(files):
     plt.grid()
     plt.xlabel('x')
     plt.ylabel(r'$e_{th}$')
-    plt.ylim(0, 2.6)
+    plt.ylim(1.8, 2.6)
 
     plt.tight_layout()
     plt.savefig('moviesod/img{:05d}.png'.format(counter))
