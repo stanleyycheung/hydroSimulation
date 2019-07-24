@@ -12,6 +12,6 @@
     * testing sod shock case  
     * implimented energy equation (section 5.5)  
 * 24/07  
-    ** implimented gravity (section 5.8)  
-    ** atmosphere test case in atmosphere.py - initial uniform density let to evolve  
-    ** implimented rotational force (rotational velocity is not being advected!!!)   
+    * implimented gravity (section 5.8)  
+    * atmosphere test case in atmosphere.py - initial uniform density let to evolve  
+    * implimented rotational force (rotational velocity is not being advected!!!)   
