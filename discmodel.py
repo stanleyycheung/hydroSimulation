@@ -98,7 +98,7 @@ def boundary(rho, rhou, bc):
         rhou[nx - 1] = rhou[nx - 4]
 
 
-def hydrostep(x, xi, rho, rhou, rhoe, gamma, dt, bc, fluxlim='donor-cell'):
+def hydrostep(x, xi, rho, rhou, rhoe, rhov, gamma, dt, bc, fluxlim='donor-cell'):
     # Use 2 ghost cells on each side
     nghost = 2
 
@@ -107,10 +107,12 @@ def hydrostep(x, xi, rho, rhou, rhoe, gamma, dt, bc, fluxlim='donor-cell'):
     # Impose boundary conditions
     boundary(rho, rhou, bc)
 
-    # Compute the velocity at the cell interfaces
+    # Compute the velocities at the cell interfaces
     ui = np.zeros(nx + 1)
+    vi = np.zeros(nx + 1)
     for ix in range(1, nx):
         ui[ix] = 0.5 * (rhou[ix] / rho[ix] + rhou[ix - 1] / rho[ix - 1])
+        vi[ix] = 0.5 * (rhov[ix] / rho[ix] + rhov[ix - 1] / rho[ix - 1])
 
     # Advect rho
     advect(x, xi, rho, ui, dt, fluxlim, nghost)
@@ -120,6 +122,9 @@ def hydrostep(x, xi, rho, rhou, rhoe, gamma, dt, bc, fluxlim='donor-cell'):
 
     # Advect rhoe
     advect(x, xi, rhoe, ui, dt, fluxlim, nghost)
+
+    # Advect rhov
+    advect(x, xi, rhov, vi, dt, fluxlim, nghost)
 
     # Re-impose boundary conditions
     boundary(rho, rhou, bc)
@@ -141,7 +146,8 @@ def hydrostep(x, xi, rho, rhou, rhoe, gamma, dt, bc, fluxlim='donor-cell'):
         rhoe[ix] = rhoe[ix] - dt * (p[ix + 1] * u[ix + 1] -
                                     p[ix - 1] * u[ix - 1] + rho[ix + 1] * V[ix + 1] * u[ix + 1] -
                                     rho[ix - 1] * V[ix - 1] * u[ix - 1]) / (2 * (x[ix + 1] - x[ix - 1]))
-
+        # impliment rotational force
+        rhou[ix] = rhou[ix] + dt * rhov[ix]**2/x[ix]
     # Re-impose boundary conditions a last time (not strictly necessary)
     boundary(rho, rhou, bc)
 
@@ -186,6 +192,13 @@ def e_initial(option):
     return result
 
 
+def v_initial(option):
+    if option == 'kep':
+        result = np.zeros(nx)
+        result[0] = np.sqrt(G*M_star/(x[0]+starDist))
+    return result
+
+
 # physical constants - mass in solar masses, length in m
 G = 6.67e-11
 AU = 1.496e11
@@ -204,15 +217,18 @@ gamma = 7. / 5.
 rho = np.zeros((nx, nt + 1))
 rhou = np.zeros((nx, nt + 1))
 rhoe = np.zeros((nx, nt + 1))
+rhov = np.zeros((nx, nt + 1))
 e = e_initial('atmosphere')
+v = v_initial('kep')
 time = np.zeros(nt + 1)
 rho[:, 0] = initial('atmosphere')
 # initial rhoe
 rhoe[:, 0] = rho[:, 0] * e
+rhov[:, 0] = rho[:, 0] * v
 
 # plot initial conditions
-plt.plot(x, rho[:, 0])
-plt.grid()
+# plt.plot(x, rho[:, 0])
+# plt.grid()
 # plt.show()
 
 # additional arrays needed
@@ -221,7 +237,6 @@ xi[1:nx] = 0.5 * (x[1:nx] + x[0:nx - 1])
 xi[0] = 2 * xi[1] - xi[2]
 xi[nx] = 2 * xi[nx - 1] - xi[nx - 2]
 dx = (xi[1:nx + 1] - xi[0:nx])
-# print(dx)
 
 counter = 1
 print_counter = 0
@@ -231,6 +246,7 @@ for it in range(1, nt + 1):
     qrho = rho[:, it - 1]
     qrhou = rhou[:, it - 1]
     qrhoe = rhoe[:, it - 1]
+    qrhov = rhov[:, it - 1]
     cs = np.sqrt(gamma * (gamma - 1) * e)
     dum = dx / (cs + abs(qrhou / qrho))
     dt = cfl * min(dum)
@@ -239,10 +255,11 @@ for it in range(1, nt + 1):
     if print_counter == time_interval:
         print("Time step: {}, Time = {}, dt = {}".format(it, time[it], dt))
         np.savetxt('outputdisc/output{:05d}.dat'.format(counter),
-                   np.c_[x, qrho, qrhou, qrhoe], header='{}'.format(time[it - 1]))
+                   np.c_[x, qrho, qrhou, qrhoe, qrhov], header='{}'.format(time[it - 1]))
         print_counter = 0
         counter += 1
-    hydrostep(x, xi, qrho, qrhou, qrhoe, gamma, dt, 'mirror/free', 'van Leer')
+    hydrostep(x, xi, qrho, qrhou, qrhoe, qrhov, gamma, dt, 'mirror/free', 'van Leer')
     rho[:, it] = qrho
     rhou[:, it] = qrhou
     rhoe[:, it] = qrhoe
+    rhov[:, it] = qrhov
