@@ -15,3 +15,7 @@
     * implimented gravity (section 5.8)  
     * atmosphere test case in atmosphere.py - initial uniform density let to evolve  
     * implimented rotational force (rotational velocity is not being advected!!!)   
+* 25/07  
+    * implimented disc BC (need to double check if right or not)  
+    * rotational velocity is still not advecting  
+    * time step dt seems to go smaller and smaller - freezing the simulation  

@@ -57,7 +57,7 @@ def advect(x, xi, q, ui, dt, fluxlim, nghost):
         q[i] = q[i] - dt * (flux[i + 1] - flux[i]) / (xi[i + 1] - xi[i])
 
 
-def boundary(rho, rhou, bc):
+def boundary(rho, rhou, rhov, bc):
     # Get the number of grid points including the ghost cells
     nx = len(rho)
 
@@ -84,7 +84,6 @@ def boundary(rho, rhou, bc):
         rhou[1] = -rhou[2]
         rhou[nx - 2] = -rhou[nx - 3]
         rhou[nx - 1] = -rhou[nx - 4]
-
     elif bc == 'mirror/free':
         # Left BC
         rho[0] = rho[3]
@@ -96,6 +95,23 @@ def boundary(rho, rhou, bc):
         rho[nx - 1] = rho[nx - 4]
         rhou[nx - 2] = rhou[nx - 3]
         rhou[nx - 1] = rhou[nx - 4]
+    elif bc == 'disc':
+        # Left BC
+        rho[0] = rho[3]
+        rho[1] = rho[2]
+        rhou[0] = rhou[3]
+        rhou[1] = rhou[2]
+        rhov[0] = np.sqrt(G*M_star/(x[0]+starDist)) * rho[0]
+        rhov[1] = np.sqrt(G*M_star/(x[1]+starDist)) * rho[0]
+        # Right BC
+        rho[nx - 2] = rho[nx - 3]
+        rho[nx - 1] = rho[nx - 4]
+        rhou[nx - 2] = rhou[nx - 3]
+        rhou[nx - 1] = rhou[nx - 4]
+        rhov[nx - 2] = rhov[nx - 3]
+        rhov[nx - 1] = rhov[nx - 4]
+    else:
+        raise Exception("Choose valid BC")
 
 
 def hydrostep(x, xi, rho, rhou, rhoe, rhov, gamma, dt, bc, fluxlim='donor-cell'):
@@ -105,7 +121,7 @@ def hydrostep(x, xi, rho, rhou, rhoe, rhov, gamma, dt, bc, fluxlim='donor-cell')
     # Get the number of grid points including the ghost cells
     nx = len(x)
     # Impose boundary conditions
-    boundary(rho, rhou, bc)
+    boundary(rho, rhou, rhov, bc)
 
     # Compute the velocities at the cell interfaces
     ui = np.zeros(nx + 1)
@@ -127,7 +143,7 @@ def hydrostep(x, xi, rho, rhou, rhoe, rhov, gamma, dt, bc, fluxlim='donor-cell')
     advect(x, xi, rhov, vi, dt, fluxlim, nghost)
 
     # Re-impose boundary conditions
-    boundary(rho, rhou, bc)
+    boundary(rho, rhou, rhov, bc)
 
     # Compute the pressure for each quantity
     u = rhou / rho
@@ -149,7 +165,7 @@ def hydrostep(x, xi, rho, rhou, rhoe, rhov, gamma, dt, bc, fluxlim='donor-cell')
         # impliment rotational force
         rhou[ix] = rhou[ix] + dt * rhov[ix]**2/x[ix]
     # Re-impose boundary conditions a last time (not strictly necessary)
-    boundary(rho, rhou, bc)
+    boundary(rho, rhou, rhov, bc)
 
 
 def initial(option):
@@ -170,6 +186,8 @@ def initial(option):
     elif option == 'atmosphere':
         # Density of air is ~ 1kg/m^3
         result = np.full(len(x), 1)
+    else:
+        raise Exception("Choose a valid energy density")
     return result
 
 
@@ -189,13 +207,18 @@ def e_initial(option):
     elif option == 'atmosphere':
         # typical pressure is 100kPa
         result = np.full(len(x), 2.5e5)
+    else:
+        raise Exception("Choose a valid initial e")
     return result
 
 
 def v_initial(option):
+    # Keplarian
     if option == 'kep':
         result = np.zeros(nx)
         result[0] = np.sqrt(G*M_star/(x[0]+starDist))
+    else:
+        raise Exception("Choose a valid initial v")
     return result
 
 
@@ -222,7 +245,6 @@ e = e_initial('atmosphere')
 v = v_initial('kep')
 time = np.zeros(nt + 1)
 rho[:, 0] = initial('atmosphere')
-# initial rhoe
 rhoe[:, 0] = rho[:, 0] * e
 rhov[:, 0] = rho[:, 0] * v
 
@@ -258,7 +280,7 @@ for it in range(1, nt + 1):
                    np.c_[x, qrho, qrhou, qrhoe, qrhov], header='{}'.format(time[it - 1]))
         print_counter = 0
         counter += 1
-    hydrostep(x, xi, qrho, qrhou, qrhoe, qrhov, gamma, dt, 'mirror/free', 'van Leer')
+    hydrostep(x, xi, qrho, qrhou, qrhoe, qrhov, gamma, dt, 'disc', 'van Leer')
     rho[:, it] = qrho
     rhou[:, it] = qrhou
     rhoe[:, it] = qrhoe
