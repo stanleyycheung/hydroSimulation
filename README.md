@@ -23,3 +23,8 @@
         * cause: disc BC implimentation  
 * 26/07  
     * rescaled discmodel.py and moviedisc.py for disc problem  
+    * freezing problem from ~~ghost cells~~ sharp boundary conditions  
+        * need BC on velocity  
+    * fixed dt problem by revising inner BC of u  
+        * can maybe put back in ghost cells?  
+    * created simulation.py - cleaner version of discmodel.py  

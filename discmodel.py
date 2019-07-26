@@ -1,9 +1,11 @@
 """
 1-D Hydro simulation
-Flux limiter options: donor cell/ superbee
-BC options: mirror/ periodic
+Flux limiter options: donor cell/ superbee/ van Leer
+BC options: mirror/ periodic/ mirror-free/ disc
 
-Spherical graviational field: -GM/R
+Added spherical graviational field: -GM/R
+Added energy equation
+Added rotational velocity and force
 
 Written by SC
 """
@@ -103,8 +105,8 @@ def boundary(rho, rhou, rhov, bc):
         # Left BC
         rho[0] = N * mu  # equation 1.4
         rho[1] = N * mu
-        rhou[0] = rhou[2]
-        rhou[1] = rhou[3]
+        rhou[0] = rhou[2]/rho[2] * N * mu
+        rhou[1] = rhou[3]/rho[3] * N * mu
         rhov[0] = np.sqrt(G*M_star/(x[0]+starDist)) * rho[0]
         rhov[1] = np.sqrt(G*M_star/(x[1]+starDist)) * rho[1]
         # Right BC
@@ -194,7 +196,7 @@ def rho_initial(option):
     elif option == 'zero':
         result = np.zeros(nx)
     else:
-        raise Exception("Choose a valid energy density")
+        raise Exception("Choose a valid density")
     return result
 
 
@@ -214,6 +216,8 @@ def e_initial(option):
     elif option == 'atmosphere':
         # typical pressure is 100kPa
         result = np.full(len(x), 2.5e5)
+    elif option == 'zero':
+        result = np.zeros(nx)
     else:
         raise Exception("Choose a valid initial e")
     return result
@@ -251,7 +255,7 @@ T = 20
 
 # atmosphere test problem
 nx = 2500
-nt = 1000
+nt = 10000
 x0 = 0
 x1 = 1200*AU
 dt = 0.5
@@ -283,18 +287,31 @@ dx = (xi[1:nx + 1] - xi[0:nx])
 
 counter = 1
 print_counter = 0
+debug_counter = 1
 time_interval = 10
+
+debug = False
 
 for it in range(1, nt + 1):
     qrho = rho[:, it - 1]
     qrhou = rhou[:, it - 1]
     qrhoe = rhoe[:, it - 1]
     qrhov = rhov[:, it - 1]
-    cs = np.sqrt(gamma * (gamma - 1) * abs(qrhoe/qrho))
-    dum = dx / (cs + abs(qrhou / qrho))
+
+    # remove ghost cells in dt calculation
+    cs = np.sqrt(gamma * (gamma - 1) * abs(qrhoe[2:-2]/qrho[2:-2]))
+    dum = dx[2:-2] / (cs + abs(qrhou[2:-2] / qrho[2:-2]))
     dt = cfl * min(dum)
+
     time[it] = time[it - 1] + dt
 
+    # debugging phase
+    if debug:
+        np.savetxt('debug/log{:03d}.dat'.format(debug_counter),
+                   np.c_[cs, dum, qrhou[2:-2] / qrho[2:-2], qrhou[2:-2], qrho[2:-2]], header='{}'.format(dt))
+        print("producing log{:03d}".format(debug_counter))
+        debug_counter += 1
+    # print("Time step: {}, Time = {}, dt = {}".format(it, time[it]/3.154e7, dt/3.154e7))
     # print(dt)
     print_counter += 1
     if print_counter == time_interval:
