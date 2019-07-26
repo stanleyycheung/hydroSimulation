@@ -86,30 +86,34 @@ def boundary(rho, rhou, rhov, bc):
         rhou[nx - 1] = -rhou[nx - 4]
     elif bc == 'mirror/free':
         # Left BC
-        rho[0] = rho[3]
-        rho[1] = rho[2]
-        rhou[0] = -rhou[3]
-        rhou[1] = -rhou[2]
+        rho[0] = rho[2]
+        rho[1] = rho[3]
+        rhou[0] = -rhou[2]
+        rhou[1] = -rhou[3]
+        rhov[0] = -rhov[2]
+        rhov[1] = -rhov[3]
         # Right BC
-        rho[nx - 2] = rho[nx - 3]
-        rho[nx - 1] = rho[nx - 4]
-        rhou[nx - 2] = rhou[nx - 3]
-        rhou[nx - 1] = rhou[nx - 4]
+        rho[nx - 2] = rho[nx - 4]
+        rho[nx - 1] = rho[nx - 3]
+        rhou[nx - 2] = rhou[nx - 4]
+        rhou[nx - 1] = rhou[nx - 3]
+        rhov[nx - 2] = rhov[nx - 4]
+        rhov[nx - 1] = rhov[nx - 3]
     elif bc == 'disc':
         # Left BC
-        rho[0] = rho[3]
-        rho[1] = rho[2]
-        rhou[0] = rhou[3]
-        rhou[1] = rhou[2]
+        rho[0] = N * mu  # equation 1.4
+        rho[1] = N * mu
+        rhou[0] = rhou[2]
+        rhou[1] = rhou[3]
         rhov[0] = np.sqrt(G*M_star/(x[0]+starDist)) * rho[0]
-        rhov[1] = np.sqrt(G*M_star/(x[1]+starDist)) * rho[0]
+        rhov[1] = np.sqrt(G*M_star/(x[1]+starDist)) * rho[1]
         # Right BC
-        rho[nx - 2] = rho[nx - 3]
-        rho[nx - 1] = rho[nx - 4]
-        rhou[nx - 2] = rhou[nx - 3]
-        rhou[nx - 1] = rhou[nx - 4]
-        rhov[nx - 2] = rhov[nx - 3]
-        rhov[nx - 1] = rhov[nx - 4]
+        rho[nx - 2] = rho[nx - 4]
+        rho[nx - 1] = rho[nx - 3]
+        rhou[nx - 2] = rhou[nx - 4]
+        rhou[nx - 1] = rhou[nx - 3]
+        rhov[nx - 2] = rhov[nx - 4]
+        rhov[nx - 1] = rhov[nx - 3]
     else:
         raise Exception("Choose valid BC")
 
@@ -147,6 +151,7 @@ def hydrostep(x, xi, rho, rhou, rhoe, rhov, gamma, dt, bc, fluxlim='donor-cell')
 
     # Compute the pressure for each quantity
     u = rhou / rho
+    v = rhov / rho
     e_tot = rhoe / rho
     e_kin = u**2 / 2
     e_th = e_tot - e_kin
@@ -163,12 +168,12 @@ def hydrostep(x, xi, rho, rhou, rhoe, rhov, gamma, dt, bc, fluxlim='donor-cell')
                                     p[ix - 1] * u[ix - 1] + rho[ix + 1] * V[ix + 1] * u[ix + 1] -
                                     rho[ix - 1] * V[ix - 1] * u[ix - 1]) / (2 * (x[ix + 1] - x[ix - 1]))
         # impliment rotational force
-        rhou[ix] = rhou[ix] + dt * rhov[ix]**2/x[ix]
+        rhou[ix] = rhou[ix] + dt * rho[ix]*v[ix]**2/x[ix]
     # Re-impose boundary conditions a last time (not strictly necessary)
     boundary(rho, rhou, rhov, bc)
 
 
-def initial(option):
+def rho_initial(option):
     # Gaussian
     if option == 'gaussian':
         xmid = 0.5 * (x0 + x1)
@@ -186,6 +191,8 @@ def initial(option):
     elif option == 'atmosphere':
         # Density of air is ~ 1kg/m^3
         result = np.full(len(x), 1)
+    elif option == 'zero':
+        result = np.zeros(nx)
     else:
         raise Exception("Choose a valid energy density")
     return result
@@ -217,6 +224,15 @@ def v_initial(option):
     if option == 'kep':
         result = np.zeros(nx)
         result[0] = np.sqrt(G*M_star/(x[0]+starDist))
+    elif option == 'step':
+        result = np.zeros(nx)
+        for i in range(0, len(result)):
+            if i < int(len(result) / 2):
+                result[i] = 10
+            else:
+                result[i] = 5
+    elif option == 'zero':
+        result = np.zeros(nx)
     else:
         raise Exception("Choose a valid initial v")
     return result
@@ -225,16 +241,21 @@ def v_initial(option):
 # physical constants - mass in solar masses, length in m
 G = 6.67e-11
 AU = 1.496e11
-M_star = 5.97e24
-starDist = 6.3e6
+M_solar = 1.9891e30
+M_star = M_solar
+starDist = 100 * AU
+m_h = 1.673e-27
+mu = 1.3 * m_h  # following Facchini et al. 2016
+N = 10**9.2
+T = 20
 
 # atmosphere test problem
-nx = 250
-nt = 10000
+nx = 2500
+nt = 1000
 x0 = 0
-x1 = 1000
+x1 = 1200*AU
 dt = 0.5
-cfl = 0.5
+cfl = 0.3
 x = x0 + (x1 - x0) * (np.arange(nx) / (nx - 1.))
 gamma = 7. / 5.
 rho = np.zeros((nx, nt + 1))
@@ -242,9 +263,9 @@ rhou = np.zeros((nx, nt + 1))
 rhoe = np.zeros((nx, nt + 1))
 rhov = np.zeros((nx, nt + 1))
 e = e_initial('atmosphere')
-v = v_initial('kep')
+v = v_initial('step')
 time = np.zeros(nt + 1)
-rho[:, 0] = initial('atmosphere')
+rho[:, 0] = rho_initial('atmosphere')
 rhoe[:, 0] = rho[:, 0] * e
 rhov[:, 0] = rho[:, 0] * v
 
@@ -269,13 +290,15 @@ for it in range(1, nt + 1):
     qrhou = rhou[:, it - 1]
     qrhoe = rhoe[:, it - 1]
     qrhov = rhov[:, it - 1]
-    cs = np.sqrt(gamma * (gamma - 1) * e)
+    cs = np.sqrt(gamma * (gamma - 1) * abs(qrhoe/qrho))
     dum = dx / (cs + abs(qrhou / qrho))
     dt = cfl * min(dum)
     time[it] = time[it - 1] + dt
+
+    # print(dt)
     print_counter += 1
     if print_counter == time_interval:
-        print("Time step: {}, Time = {}, dt = {}".format(it, time[it], dt))
+        print("Time step: {}, Time = {}, dt = {}".format(it, time[it]/3.154e7, dt/3.154e7))
         np.savetxt('outputdisc/output{:05d}.dat'.format(counter),
                    np.c_[x, qrho, qrhou, qrhoe, qrhov], header='{}'.format(time[it - 1]))
         print_counter = 0

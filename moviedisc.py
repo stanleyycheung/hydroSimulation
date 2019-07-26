@@ -11,13 +11,13 @@ gamma = 7/5
 
 plt.rcParams["figure.figsize"] = [24, 8]
 
-interval = 1
-files = files[::interval]
-
+# interval = 1
+# files = files[::interval]
+AU = 1.496e11
 
 for file in sorted(files):
     data = np.loadtxt(file)
-    x = data[:, 0]
+    x = data[:, 0]/AU + 100
     rho = data[:, 1]
     rhou = data[:, 2]
     rhoe = data[:, 3]
@@ -31,19 +31,19 @@ for file in sorted(files):
     plt.subplot(1, 3, 1)
     plt.plot(x, rho, '.-')
     plt.grid()
-    plt.xlabel(r'R (m)')
+    plt.xlabel(r'R (AU)')
     plt.ylabel(r'$\rho$ $(kgm^{-3})$')
 
     plt.subplot(1, 3, 2)
     plt.plot(x, p, '.-')
     plt.grid()
-    plt.xlabel(r'R (m)')
-    plt.ylabel(r'$p$ $(Pa)$')
+    plt.xlabel(r'R (AU)')
+    plt.ylabel(r'$P$ $(Pa)$')
 
     plt.subplot(1, 3, 3)
     plt.plot(x, v, '.-')
     plt.grid()
-    plt.xlabel(r'R (m)')
+    plt.xlabel(r'R (AU)')
     plt.ylabel(r'$v$ $(ms^{-1})$')
 
     plt.tight_layout()
