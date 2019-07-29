@@ -28,3 +28,8 @@
     * fixed dt problem by revising inner BC of u  
         * can maybe put back in ghost cells?  
     * created simulation.py - cleaner version of discmodel.py  
+* 29/07  
+    * completed simulation.py  
+    * created simulation_isothermal.py - isothermal version of simulation.py  
+        * no energy equation  
+    
