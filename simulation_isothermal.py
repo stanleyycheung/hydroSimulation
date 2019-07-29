@@ -9,23 +9,19 @@ import numpy as np
 
 
 class discSimulation:
-    def __init__(self, nx, nt, x0, x1, cfl, init_rho, temp, init_v, bc, fluxlim, debug=False):
+    def __init__(self, nx, nt, x0, x1, cfl, init_rho, temp, init_v, bc, fluxlim):
         self._nx = nx
         self._nt = nt
         self._x0 = x0
         self._x1 = x1
         self._cfl = cfl
         self._init_v = init_v
-        self._debug = debug
         self._bc = bc
         self._fluxlim = fluxlim
         self._T = temp
 
         self._counter = 1
         self._print_counter = 0
-        self._debug = debug
-        if self._debug:
-            self._debug_counter = 1
 
         self._x = self._x0 + (self._x1 - self._x0) * (np.arange(self._nx) / (self._nx - 1.))
         self._rho = np.zeros((self._nx, self._nt + 1))
@@ -85,8 +81,8 @@ class discSimulation:
             self._qrhov[nx - 1] = self._qrhov[nx - 3]
         elif self._bc == 'disc':
             # Left BC
-            self._qrho[0] = N * mu  # equation 1.4
-            self._qrho[1] = N * mu
+            self._qrho[0] = N * mu * m_h
+            self._qrho[1] = N * mu * m_h
             self._qrhou[0] = self._qrhou[2]/self._qrho[2] * self._qrho[0]
             self._qrhou[1] = self._qrhou[3]/self._qrho[3] * self._qrho[1]
             self._qrhov[0] = np.sqrt(G*M_star/(self._x[0]+starDist)) * self._qrho[0]
@@ -114,13 +110,12 @@ class discSimulation:
                 else:
                     result[i] = 5
         elif init_v == 'zero':
-            result = np.full(self._nx, 10e-10)
+            result = np.full(self._nx, 10e-15)
         else:
             raise Exception("Choose a valid initial v")
         return result
 
     def rho_initial(self, init_rho):
-        # Gaussian
         if init_rho == 'gaussian':
             xmid = 0.5 * (self._x0 + self._x1)
             dg = 0.1 * (self._x1 - self._x0)
@@ -133,12 +128,11 @@ class discSimulation:
                     result[i] = 1
                 else:
                     result[i] = 0.125
-        # Atmosphere
         elif init_rho == 'atmosphere':
             # Density of air is ~ 1kg/m^3
             result = np.full(len(self._x), 1)
         elif init_rho == 'zero':
-            result = np.full(self._nx, 10e-10)
+            result = np.full(self._nx, N * mu * m_h / 100)
         else:
             raise Exception("Choose a valid density")
         return result
@@ -210,22 +204,24 @@ class discSimulation:
         self.advect(self._qrhov, vi, self._dt, nghost)
         # Re-impose boundary conditions
         self.set_boundary()
-        # Compute the pressure and rotational velocity
-        p = self._qrho * k * self._T / (mu * m_h)
+        # Compute the rotational velocity and pressure
+        self._p = self._qrho * k * self._T / (mu * m_h)
         v = self._qrhov / self._qrho
         # Calculate graviational potiental
         V = G * M_star / (self._x + starDist)
         # Now add all external forces, for all cells except the ghost cells
         for ix in range(2, nx - 2):
             self._qrhou[ix] = self._qrhou[ix] - self._dt * \
-                (p[ix + 1] - p[ix - 1] + self._qrho[ix + 1] * V[ix + 1] -
+                (self._p[ix + 1] - self._p[ix - 1] + self._qrho[ix + 1] * V[ix + 1] -
                  self._qrho[ix - 1] * V[ix - 1]) / (2 * (self._x[ix + 1] - self._x[ix - 1]))
             # impliment rotational force
             self._qrhou[ix] = self._qrhou[ix] + self._dt * self._qrho[ix]*v[ix]**2/self._x[ix]
         # Re-impose boundary conditions a last time (not strictly necessary)
         self.set_boundary()
 
-    def run(self, time_interval, verbose=False):
+    def run(self, time_interval=10, verbose=True, debug=False):
+        if debug:
+            self._debug_counter = 1
         for it in range(1, self._nt+1):
             self._qrho = self._rho[:, it - 1]
             self._qrhou = self._rhou[:, it - 1]
@@ -233,18 +229,21 @@ class discSimulation:
 
             cs = np.sqrt(k * self._T / (mu * m_h))
             dum = self._dx / (cs + abs(self._qrhou / self._qrho))
+
             self._dt = self._cfl * min(dum)
             self._time[it] = self._time[it - 1] + self._dt
 
-            if self._debug:
+            if debug:
                 np.savetxt('debug/log{:03d}.dat'.format(self._debug_counter),
-                           np.c_['debug text'], header='debug text')
+                           np.c_[self._qrho], header='{}'.format(self._dt))
                 print("producing log{:03d}".format(self._debug_counter))
                 self._debug_counter += 1
             self._print_counter += 1
             if self._print_counter == time_interval:
-                print("Time step: {}, Time = {}, dt = {}".format(
-                    it, self._time[it]/3.154e7, self._dt/3.154e7))
+                if verbose:
+                    print("Time step: {}, Time = {}, dt = {}".format(
+                        it, self._time[it]/3.154e7, self._dt/3.154e7))
+
                 np.savetxt('outputdisc_iso/output{:05d}.dat'.format(self._counter),
                            np.c_[self._x, self._qrho, self._qrhou, self._qrhov], header='{}'.format(self._time[it - 1]))
                 self._print_counter = 0
@@ -263,7 +262,7 @@ M_solar = 1.9891e30
 M_star = M_solar
 starDist = 100 * AU
 m_h = 1.673e-27
-mu = 1.3 * m_h  # following Facchini et al. 2016
+mu = 1.3  # following Facchini et al. 2016
 N = 10**9.2
 T = 20
 gamma = 7. / 5.
@@ -271,7 +270,6 @@ gamma = 7. / 5.
 
 if __name__ == '__main__':
     # run simulation
-    print('running main')
-    simulation = discSimulation(2500, 10000, 0, 1200*AU, 0.3, 'zero',
+    simulation = discSimulation(2500, 20000, 0, 1200*AU, 0.3, 'zero',
                                 100, 'zero', 'disc', 'van Leer')
-    simulation.run(10)
+    simulation.run(time_interval=20, debug=False)
