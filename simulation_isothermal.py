@@ -18,7 +18,7 @@ class discSimulation:
         self._init_v = init_v
         self._bc = bc
         self._fluxlim = fluxlim
-        self._T = temp
+        self._T = self.set_T(temp)
 
         self._counter = 1
         self._print_counter = 0
@@ -96,6 +96,15 @@ class discSimulation:
             self._qrhov[nx - 1] = self._qrhov[nx - 3]
         else:
             raise Exception("Choose valid BC")
+
+    def set_T(self, temp):
+        if temp == 'default':
+            result = np.full(self._nx, 100)
+            result[0] = 20
+            result[1] = 20
+        else:
+            raise Exception("Choose a valid temperature")
+        return result
 
     def v_initial(self, init_v):
         # Keplarian
@@ -227,7 +236,7 @@ class discSimulation:
             self._qrhou = self._rhou[:, it - 1]
             self._qrhov = self._rhov[:, it - 1]
 
-            cs = np.sqrt(k * self._T / (mu * m_h))
+            cs = np.sqrt(k * self._T[it-1] / (mu * m_h))
             dum = self._dx / (cs + abs(self._qrhou / self._qrho))
 
             self._dt = self._cfl * min(dum)
@@ -270,6 +279,6 @@ gamma = 7. / 5.
 
 if __name__ == '__main__':
     # run simulation
-    simulation = discSimulation(2500, 20000, 0, 1200*AU, 0.3, 'zero',
-                                100, 'zero', 'disc', 'van Leer')
-    simulation.run(time_interval=20, debug=False)
+    simulation = discSimulation(2500, 1, 0, 1200*AU, 0.3, 'zero',
+                                'default', 'zero', 'disc', 'van Leer')
+    simulation.run(time_interval=10, debug=False)

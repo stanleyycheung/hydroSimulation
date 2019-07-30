@@ -32,4 +32,5 @@
     * completed simulation.py  
     * created simulation_isothermal.py - isothermal version of simulation.py  
         * no energy equation  
-    
+* 30/07  
+    * nothing works :'(  

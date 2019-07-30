@@ -1,0 +1,20 @@
+import numpy as np
+
+
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import pylab
+
+
+dataFin=np.loadtxt("1Msol_100AU_1000G0_10pc_finish.dat")
+dataAbund=np.loadtxt("1Msol_100AU_1000G0_10pc_abundances.dat")
+
+
+plt.axis(fontsize=24)
+fig, axes= plt.subplots(figsize=(10,7))
+axes.set_xlabel('R, AU' fontsize=18)
+axes.set_ylabel('x' fontsize=18)
+
+axes.plot(dataFin[:,0], np.log10(dataFin[:,3]))
+
+plt.show()
