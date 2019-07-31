@@ -36,4 +36,5 @@ axes.plot(dataFin100_1p3[:, 0]/au, np.log10(dataFin100_1p3[:, 2]/mu/mH), color="
 axes2.plot(dataFin100_1p3[:, 0]/au, (dataFin100_1p3[:, 3]), color="red")
 # axes.plot(dataFin200[:,0]/au, np.log10(dataFin200[:,2]/mu/mH))
 
+plt.savefig("fried_grid_plot.png")
 plt.show()

@@ -6,6 +6,7 @@ Written by SC
 '''
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 class discSimulation:
@@ -102,6 +103,8 @@ class discSimulation:
             result = np.full(self._nx, 100)
             result[0] = 20
             result[1] = 20
+        elif temp == 'flat':
+            result = np.full(self._nx, 100)
         else:
             raise Exception("Choose a valid temperature")
         return result
@@ -109,8 +112,7 @@ class discSimulation:
     def v_initial(self, init_v):
         # Keplarian
         if init_v == 'kep':
-            result = np.zeros(self._nx)
-            result[0] = np.sqrt(G*M_star/(self._x[0]+starDist))
+            result = np.sqrt(G*M_star/(self._x+starDist))
         elif init_v == 'step':
             result = np.zeros(self._nx)
             for i in range(0, len(result)):
@@ -119,7 +121,7 @@ class discSimulation:
                 else:
                     result[i] = 5
         elif init_v == 'zero':
-            result = np.full(self._nx, 10e-15)
+            result = np.full(self._nx, 10e-5)
         else:
             raise Exception("Choose a valid initial v")
         return result
@@ -224,11 +226,11 @@ class discSimulation:
                 (self._p[ix + 1] - self._p[ix - 1] + self._qrho[ix + 1] * V[ix + 1] -
                  self._qrho[ix - 1] * V[ix - 1]) / (2 * (self._x[ix + 1] - self._x[ix - 1]))
             # impliment rotational force
-            self._qrhou[ix] = self._qrhou[ix] + self._dt * self._qrho[ix]*v[ix]**2/self._x[ix]
+            self._qrhou[ix] = self._qrhou[ix] + self._dt * self._qrhov[ix]*v[ix]/self._x[ix]
         # Re-impose boundary conditions a last time (not strictly necessary)
         self.set_boundary()
 
-    def run(self, time_interval=10, verbose=True, debug=False):
+    def run(self, time_interval=10, verbose=True, debug=False, movie=False):
         if debug:
             self._debug_counter = 1
         for it in range(1, self._nt+1):
@@ -236,7 +238,7 @@ class discSimulation:
             self._qrhou = self._rhou[:, it - 1]
             self._qrhov = self._rhov[:, it - 1]
 
-            cs = np.sqrt(k * self._T[it-1] / (mu * m_h))
+            cs = np.sqrt(k * self._T / (mu * m_h))
             dum = self._dx / (cs + abs(self._qrhou / self._qrho))
 
             self._dt = self._cfl * min(dum)
@@ -253,7 +255,7 @@ class discSimulation:
                     print("Time step: {}, Time = {}, dt = {}".format(
                         it, self._time[it]/3.154e7, self._dt/3.154e7))
 
-                np.savetxt('outputdisc_iso/output{:05d}.dat'.format(self._counter),
+                np.savetxt('outputdisc_iso_grav/output{:05d}.dat'.format(self._counter),
                            np.c_[self._x, self._qrho, self._qrhou, self._qrhov], header='{}'.format(self._time[it - 1]))
                 self._print_counter = 0
                 self._counter += 1
@@ -261,6 +263,14 @@ class discSimulation:
             self._rho[:, it] = self._qrho
             self._rhou[:, it] = self._qrhou
             self._rhov[:, it] = self._qrhov
+        if movie:
+            print('generating movie')
+            '''
+            x_plot = self._x/AU + 100
+            rho_plot = data[:, 1]
+            rhou_plot = data[:, 2]
+            rhov_plot = data[:, 3]
+            '''
 
 
 # physical constants - mass in solar masses, length in m
@@ -278,7 +288,13 @@ gamma = 7. / 5.
 
 
 if __name__ == '__main__':
-    # run simulation
-    simulation = discSimulation(2500, 1, 0, 1200*AU, 0.3, 'zero',
+    '''
+    # disc simulation
+    simulation = discSimulation(2500, 20000, 0, 1200*AU, 0.3, 'zero',
                                 'default', 'zero', 'disc', 'van Leer')
-    simulation.run(time_interval=10, debug=False)
+    simulation.run(time_interval=20, debug=False, movie=False)
+    '''
+    # gravity test
+    simulation = discSimulation(2500, 20000, 0, 1200*AU, 0.3, 'atmosphere',
+                                'flat', 'kep', 'mirror/free', 'van Leer')
+    simulation.run(time_interval=200, debug=False, movie=False)

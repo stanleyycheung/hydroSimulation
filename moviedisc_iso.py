@@ -51,6 +51,7 @@ for file in sorted(files):
     plt.subplot(1, 3, 3)
     plt.plot(x, v, '.-')
     plt.grid()
+    plt.yscale('log')
     plt.xlabel(r'R (AU)')
     plt.ylabel(r'$v$ $(ms^{-1})$')
 

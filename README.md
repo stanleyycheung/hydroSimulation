@@ -34,3 +34,6 @@
         * no energy equation  
 * 30/07  
     * nothing works :'(  
+    * recreated atmosphere test in disc model (_grav files)  
+* 31/07  
+    *
