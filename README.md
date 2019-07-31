@@ -1,4 +1,6 @@
 # hydroSimulation  
+1D pseudo disc-wind model  
+Also includes a general hydro solver  
 
 ## Changelog  
 * 19/07  
@@ -36,4 +38,4 @@
     * nothing works :'(  
     * recreated atmosphere test in disc model (_grav files)  
 * 31/07  
-    *
+    * working on atmosphere test in disc  

@@ -9,7 +9,7 @@ files = glob.glob(path)
 counter = 1
 gamma = 7/5
 
-plt.rcParams["figure.figsize"] = [24, 8]
+plt.rcParams["figure.figsize"] = [12, 8]
 
 # physical constants - mass in solar masses, length in m
 G = 6.67e-11
@@ -27,33 +27,26 @@ gamma = 7. / 5.
 
 for file in sorted(files):
     data = np.loadtxt(file)
-    x = data[:, 0]/AU + 100
+    # x = data[:, 0]/AU + 100
+    x = data[:, 0]/1000
     rho = data[:, 1]
     rhou = data[:, 2]
-    rhov = data[:, 3]
 
     u = rhou/rho
-    v = rhov/rho
     p = rho * k * T / (mu * m_h)
 
-    plt.subplot(1, 3, 1)
+    '''
     plt.plot(x, rho, '.-')
     plt.grid()
     plt.xlabel(r'R (AU)')
     plt.ylabel(r'$\rho$ $(kgm^{-3})$')
+    '''
 
-    plt.subplot(1, 3, 2)
     plt.plot(x, p, '.-')
     plt.grid()
-    plt.xlabel(r'R (AU)')
+    plt.xlabel(r'R (km)')
     plt.ylabel(r'$P$ $(Pa)$')
-
-    plt.subplot(1, 3, 3)
-    plt.plot(x, v, '.-')
-    plt.grid()
-    plt.yscale('log')
-    plt.xlabel(r'R (AU)')
-    plt.ylabel(r'$v$ $(ms^{-1})$')
+    # plt.xlim(100, 200)
 
     plt.tight_layout()
     plt.savefig('moviedisc_iso_grav/img{:05d}.png'.format(counter))

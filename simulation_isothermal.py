@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 
 class discSimulation:
-    def __init__(self, nx, nt, x0, x1, cfl, init_rho, temp, init_v, bc, fluxlim):
+    def __init__(self, nx, nt, x0, x1, cfl, init_rho, temp, init_v, bc, fluxlim, rotation=True):
         self._nx = nx
         self._nt = nt
         self._x0 = x0
@@ -20,14 +20,17 @@ class discSimulation:
         self._bc = bc
         self._fluxlim = fluxlim
         self._T = self.set_T(temp)
+        self._rotation = rotation
 
         self._counter = 1
         self._print_counter = 0
+        self._init = True
 
         self._x = self._x0 + (self._x1 - self._x0) * (np.arange(self._nx) / (self._nx - 1.))
         self._rho = np.zeros((self._nx, self._nt + 1))
         self._rhou = np.zeros((self._nx, self._nt + 1))
-        self._rhov = np.zeros((self._nx, self._nt + 1))
+        if self._rotation:
+            self._rhov = np.zeros((self._nx, self._nt + 1))
         self._time = np.zeros(self._nt + 1)
 
         self._xi = np.zeros(self._nx + 1)
@@ -38,7 +41,8 @@ class discSimulation:
 
         self._v = self.v_initial(init_v)
         self._rho[:, 0] = self.rho_initial(init_rho)
-        self._rhov[:, 0] = self._rho[:, 0] * self._v
+        if self._rotation:
+            self._rhov[:, 0] = self._rho[:, 0] * self._v
 
     def set_boundary(self):
         # Get the number of grid points including the ghost cells
@@ -67,34 +71,36 @@ class discSimulation:
             self._qrhou[nx - 1] = -self._qrhou[nx - 4]
         elif self._bc == 'mirror/free':
             # Left BC
-            self._qrho[0] = self._qrho[2]
-            self._qrho[1] = self._qrho[3]
-            self._qrhou[0] = -self._qrhou[2]
-            self._qrhou[1] = -self._qrhou[3]
-            self._qrhov[0] = -self._qrhov[2]
-            self._qrhov[1] = -self._qrhov[3]
+            self._qrho[0] = self._qrho[3]
+            self._qrho[1] = self._qrho[2]
+            self._qrhou[0] = -self._qrhou[3]
+            self._qrhou[1] = -self._qrhou[2]
             # Right BC
             self._qrho[nx - 2] = self._qrho[nx - 4]
             self._qrho[nx - 1] = self._qrho[nx - 3]
             self._qrhou[nx - 2] = self._qrhou[nx - 4]
             self._qrhou[nx - 1] = self._qrhou[nx - 3]
-            self._qrhov[nx - 2] = self._qrhov[nx - 4]
-            self._qrhov[nx - 1] = self._qrhov[nx - 3]
+            if self._rotation:
+                self._qrhov[0] = -self._qrhov[2]
+                self._qrhov[1] = -self._qrhov[3]
+                self._qrhov[nx - 2] = self._qrhov[nx - 4]
+                self._qrhov[nx - 1] = self._qrhov[nx - 3]
         elif self._bc == 'disc':
             # Left BC
             self._qrho[0] = N * mu * m_h
             self._qrho[1] = N * mu * m_h
             self._qrhou[0] = self._qrhou[2]/self._qrho[2] * self._qrho[0]
             self._qrhou[1] = self._qrhou[3]/self._qrho[3] * self._qrho[1]
-            self._qrhov[0] = np.sqrt(G*M_star/(self._x[0]+starDist)) * self._qrho[0]
-            self._qrhov[1] = np.sqrt(G*M_star/(self._x[1]+starDist)) * self._qrho[1]
             # Right BC
             self._qrho[nx - 2] = self._qrho[nx - 4]
             self._qrho[nx - 1] = self._qrho[nx - 3]
             self._qrhou[nx - 2] = self._qrhou[nx - 4]
             self._qrhou[nx - 1] = self._qrhou[nx - 3]
-            self._qrhov[nx - 2] = self._qrhov[nx - 4]
-            self._qrhov[nx - 1] = self._qrhov[nx - 3]
+            if self._rotation:
+                self._qrhov[0] = np.sqrt(G*M_star/(self._x[0]+starDist)) * self._qrho[0]
+                self._qrhov[1] = np.sqrt(G*M_star/(self._x[1]+starDist)) * self._qrho[1]
+                self._qrhov[nx - 2] = self._qrhov[nx - 4]
+                self._qrhov[nx - 1] = self._qrhov[nx - 3]
         else:
             raise Exception("Choose valid BC")
 
@@ -205,28 +211,33 @@ class discSimulation:
         for ix in range(1, nx):
             ui[ix] = 0.5 * (self._qrhou[ix] / self._qrho[ix] +
                             self._qrhou[ix - 1] / self._qrho[ix - 1])
-            vi[ix] = 0.5 * (self._qrhov[ix] / self._qrho[ix] +
-                            self._qrhov[ix - 1] / self._qrho[ix - 1])
+            if self._rotation:
+                vi[ix] = 0.5 * (self._qrhov[ix] / self._qrho[ix] +
+                                self._qrhov[ix - 1] / self._qrho[ix - 1])
         # Advect rho
         self.advect(self._qrho, ui, self._dt, nghost)
         # Advect rhou
         self.advect(self._qrhou, ui, self._dt, nghost)
         # Advect rhov
-        self.advect(self._qrhov, vi, self._dt, nghost)
+        if self._rotation:
+            self.advect(self._qrhov, vi, self._dt, nghost)
         # Re-impose boundary conditions
         self.set_boundary()
         # Compute the rotational velocity and pressure
         self._p = self._qrho * k * self._T / (mu * m_h)
-        v = self._qrhov / self._qrho
+        if self._rotation:
+            v = self._qrhov / self._qrho
         # Calculate graviational potiental
-        V = G * M_star / (self._x + starDist)
+        F = G * M_star / (self._x + starDist)**2
         # Now add all external forces, for all cells except the ghost cells
         for ix in range(2, nx - 2):
             self._qrhou[ix] = self._qrhou[ix] - self._dt * \
-                (self._p[ix + 1] - self._p[ix - 1] + self._qrho[ix + 1] * V[ix + 1] -
-                 self._qrho[ix - 1] * V[ix - 1]) / (2 * (self._x[ix + 1] - self._x[ix - 1]))
+                (self._p[ix + 1] - self._p[ix - 1]) / (2 * (self._x[ix + 1] - self._x[ix - 1]))
+            # gravity implimentation
+            self._qrhou[ix] = self._qrhou[ix] - self._dt * self._qrho[ix] * F[ix]
             # impliment rotational force
-            self._qrhou[ix] = self._qrhou[ix] + self._dt * self._qrhov[ix]*v[ix]/self._x[ix]
+            if self._rotation:
+                self._qrhou[ix] = self._qrhou[ix] + self._dt * self._qrhov[ix]*v[ix]/self._x[ix]
         # Re-impose boundary conditions a last time (not strictly necessary)
         self.set_boundary()
 
@@ -236,7 +247,8 @@ class discSimulation:
         for it in range(1, self._nt+1):
             self._qrho = self._rho[:, it - 1]
             self._qrhou = self._rhou[:, it - 1]
-            self._qrhov = self._rhov[:, it - 1]
+            if self._rotation:
+                self._qrhov = self._rhov[:, it - 1]
 
             cs = np.sqrt(k * self._T / (mu * m_h))
             dum = self._dx / (cs + abs(self._qrhou / self._qrho))
@@ -246,23 +258,40 @@ class discSimulation:
 
             if debug:
                 np.savetxt('debug/log{:03d}.dat'.format(self._debug_counter),
-                           np.c_[self._qrho], header='{}'.format(self._dt))
+                           np.c_[self._qrho, self._qrhou], header='{}'.format(self._dt))
                 print("producing log{:03d}".format(self._debug_counter))
                 self._debug_counter += 1
+
+            if (self._init and time_interval != 1):
+                if verbose:
+                    print("Time step: {}, Time = {}, dt = {}".format(
+                        it, self._time[it], self._dt))
+                if self._rotation:
+                    np.savetxt('outputdisc_iso_grav/output{:05d}.dat'.format(self._counter),
+                               np.c_[self._x, self._qrho, self._qrhou, self._qrhov], header='{}'.format(self._time[it - 1]))
+                else:
+                    np.savetxt('outputdisc_iso_grav/output{:05d}.dat'.format(self._counter),
+                               np.c_[self._x, self._qrho, self._qrhou], header='{}'.format(self._time[it - 1]))
+                self._counter += 1
+                self._init = False
             self._print_counter += 1
             if self._print_counter == time_interval:
                 if verbose:
                     print("Time step: {}, Time = {}, dt = {}".format(
-                        it, self._time[it]/3.154e7, self._dt/3.154e7))
-
-                np.savetxt('outputdisc_iso_grav/output{:05d}.dat'.format(self._counter),
-                           np.c_[self._x, self._qrho, self._qrhou, self._qrhov], header='{}'.format(self._time[it - 1]))
+                        it, self._time[it], self._dt))
+                if self._rotation:
+                    np.savetxt('outputdisc_iso_grav/output{:05d}.dat'.format(self._counter),
+                               np.c_[self._x, self._qrho, self._qrhou, self._qrhov], header='{}'.format(self._time[it - 1]))
+                else:
+                    np.savetxt('outputdisc_iso_grav/output{:05d}.dat'.format(self._counter),
+                               np.c_[self._x, self._qrho, self._qrhou], header='{}'.format(self._time[it - 1]))
                 self._print_counter = 0
                 self._counter += 1
             self.hydrostep()
             self._rho[:, it] = self._qrho
             self._rhou[:, it] = self._qrhou
-            self._rhov[:, it] = self._qrhov
+            if self._rotation:
+                self._rhov[:, it] = self._qrhov
         if movie:
             print('generating movie')
             '''
@@ -276,10 +305,12 @@ class discSimulation:
 # physical constants - mass in solar masses, length in m
 G = 6.67e-11
 AU = 1.496e11
-k = 1.38e-23
 M_solar = 1.9891e30
-M_star = M_solar
-starDist = 100 * AU
+# M_solar = M_star
+M_star = 5.972e24
+# starDist = 100 * AU
+starDist = 6.371e6
+k = 1.38e-23
 m_h = 1.673e-27
 mu = 1.3  # following Facchini et al. 2016
 N = 10**9.2
@@ -295,6 +326,6 @@ if __name__ == '__main__':
     simulation.run(time_interval=20, debug=False, movie=False)
     '''
     # gravity test
-    simulation = discSimulation(2500, 20000, 0, 1200*AU, 0.3, 'atmosphere',
-                                'flat', 'kep', 'mirror/free', 'van Leer')
-    simulation.run(time_interval=200, debug=False, movie=False)
+    simulation = discSimulation(500, 50000, 0, 1e5, 0.3, 'atmosphere',
+                                'flat', 'kep', 'mirror/free', 'van Leer', rotation=False)
+    simulation.run(time_interval=50, debug=False, movie=False)

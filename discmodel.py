@@ -246,8 +246,10 @@ def v_initial(option):
 G = 6.67e-11
 AU = 1.496e11
 M_solar = 1.9891e30
-M_star = M_solar
-starDist = 100 * AU
+# M_solar = M_star
+M_star = 5.972e24
+# starDist = 100 * AU
+starDist = 6.371e6
 m_h = 1.673e-27
 mu = 1.3 * m_h  # following Facchini et al. 2016
 N = 10**9.2
