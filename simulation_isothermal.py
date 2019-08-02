@@ -10,6 +10,7 @@ import numpy as np
 
 class discSimulation:
     def __init__(self, nx, nt, x0, x1, cfl, init_rho, temp, init_v, bc, fluxlim, rotation=True):
+
         self._nx = nx
         self._nt = nt
         self._x0 = x0
@@ -80,8 +81,8 @@ class discSimulation:
             # Right BC
             self._qrho[nx - 2] = self._qrho[nx - 4]
             self._qrho[nx - 1] = self._qrho[nx - 3]
-            self._qrhou[nx - 2] = self._qrhou[nx - 4]
-            self._qrhou[nx - 1] = self._qrhou[nx - 3]
+            self._qrhou[nx - 2] = -abs(self._qrhou[nx - 4])
+            self._qrhou[nx - 1] = -abs(self._qrhou[nx - 3])
             if self._rotation:
                 self._qrhov[0] = -self._qrhov[2]
                 self._qrhov[1] = -self._qrhov[3]
@@ -172,7 +173,6 @@ class discSimulation:
         nx = len(self._xi) - 1
         if len(self._x) != nx or len(self._xi) != nx + 1 or len(q) != nx or len(ui) != nx + 1 or nghost < 1:
             raise ValueError('Wrong input shape')
-
         # Determine the r_{i-1/2} for the flux limiter
         r = np.zeros(nx + 1)
         for i in range(2, nx - 1):
@@ -182,7 +182,6 @@ class discSimulation:
                     r[i] = (q[i - 1] - q[i - 2]) / dq
                 else:
                     r[i] = (q[i + 1] - q[i]) / dq
-
         #  Determine the flux limiter (many other flux limiters can be implemented here!)
         if self._fluxlim == 'donor-cell':
             phi = np.zeros(nx + 1)
@@ -335,6 +334,6 @@ if __name__ == '__main__':
     simulation.run(time_interval=20, debug=False, movie=False)
     '''
     # gravity test
-    simulation = discSimulation(500, 50000, 0, 1e5, 0.3, 'exp',
+    simulation = discSimulation(500, 50000, 0, 2e4, 0.3, 'exp',
                                 'flat', 'kep', 'mirror/free', 'van Leer', rotation=False)
     simulation.run(time_interval=50, debug=False)
