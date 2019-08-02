@@ -153,6 +153,7 @@ class discSimulation:
         Options:
             - 'default': all at 100K except first 2 cells at 20K - used in psuedo disc model
             - 'flat': all at 288.16K - used in atmosphere test
+        Returns: numpy arr(_nx)
         '''
         if temp == 'default':
             result = np.full(self._nx, 100)
@@ -171,6 +172,7 @@ class discSimulation:
             - 'kep': Keplarian rotation
             - 'step': half at 10m/s, half at 5m/s - used to test for advection
             - 'zero': set to 10e-5m/s
+        Returns: numpy arr(_nx)
         '''
         if init_v == 'kep':
             result = np.sqrt(G*M_star/(self._x+starDist))
@@ -193,9 +195,10 @@ class discSimulation:
         Options:
             - 'gaussian': set to Gaussian with sigma as 10% of range - used in examples
             - 'sod': half at 1kg/m^3, half at 0.125kg/m^3
-            - 'atmosphere': all at 0.788kg/m^3 corresponds to
-            - 'exp':
-            - 'zero':
+            - 'atmosphere': all at 0.788kg/m^3 corresponds to a pressure of 101325 Pa
+            - 'exp': analytic solution in (https://en.wikipedia.org/wiki/Atmospheric_pressure#Surface_pressure)
+            - 'zero': all at 1/100 of outer disc edge initial conditions
+        Returns: numpy arr(_nx)
         '''
         if init_rho == 'gaussian':
             xmid = 0.5 * (self._x0 + self._x1)
@@ -222,6 +225,14 @@ class discSimulation:
         return result
 
     def advect(self, q, ui, dt, nghost):
+        '''
+        Advects quantity q at speed ui for time step dt
+        Arguments:
+            q (numpy arr(_nx)): quantity to advect
+            ui (numpy arr(_nx+1)): speed to advect at
+            dt (float): time step of advection step
+            nghost (int): number of ghost cells
+        '''
         nx = len(self._xi) - 1
         if len(self._x) != nx or len(self._xi) != nx + 1 or len(q) != nx or len(ui) != nx + 1 or nghost < 1:
             raise ValueError('Wrong input shape')
@@ -264,6 +275,16 @@ class discSimulation:
             q[i] = q[i] - dt * (flux[i + 1] - flux[i]) / (self._xi[i + 1] - self._xi[i])
 
     def hydrostep(self):
+        '''
+        hydrostep procedure:
+        1) Impose boundary conditions
+        2) Calculates the velocities at cell interfaces
+        3) Advect quantities
+        4) Impose boundary conditions
+        5) Calculates pressures, and rotational velocity
+        6) Deals with force terms and graviational force
+        7) Impose boundary conditions
+        '''
         # Use 2 ghost cells on each side
         nghost = 2
         # Get the number of grid points including the ghost cells
@@ -292,7 +313,7 @@ class discSimulation:
         self._p = self._qrho * k * self._T / (mu * m_h)
         if self._rotation:
             v = self._qrhov / self._qrho
-        # Calculate graviational potiental (this could be removed out of loop as this is constant)
+        # Calculate graviational force (this could be removed out of loop as this is constant)
         F = G * M_star / (self._x + starDist)**2
         # Now add all external forces, for all cells except the ghost cells
         for ix in range(2, nx - 2):
@@ -307,6 +328,14 @@ class discSimulation:
         self.set_boundary()
 
     def run(self, time_interval=10, verbose=True, debug=False):
+        '''
+        Runs simulation, outputs data files per time_interval
+        Also calculates dt from CFL condition
+        Arguments:
+            time_interval (int): interval which at data files are produced
+            verbose (bool): if True, will print info per time_interval
+            debug (bool): if True, will output log to debug/ every time step
+        '''
         if debug:
             self._debug_counter = 1
         for it in range(1, self._nt+1):

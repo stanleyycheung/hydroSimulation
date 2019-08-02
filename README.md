@@ -81,14 +81,14 @@ Use ffmpeg command in the ```movie.py``` file to produce .mp4
 
 ## Todo  
 - [] use ```simulation_isothermal.py``` or ```simulation.py``` as a class to automate plotting and making movie into one file.  
-
-⋅⋅⋅Example (can be used in ```moviedisc_iso_grav.py```):  
-⋅⋅⋅```python
-⋅⋅⋅import simulation_isothermal  
-⋅⋅⋅simulation = discSimulation(500, 50000, 0, 2e4, 0.3, 'exp', 'flat', 'kep', 'mirror/free', 'van Leer', rotation=False)  
-⋅⋅⋅simulation.run(time_interval=50, debug=False)  
-⋅⋅⋅# rest of code to plot movie  
-⋅⋅⋅```  
+Example (can be used in ```moviedisc_iso_grav.py```):  
+```python
+import simulation_isothermal  
+simulation = discSimulation(500, 50000, 0, 2e4, 0.3, 'exp', 'flat', 'kep', 'mirror/free', 'van Leer', rotation=False)  
+simulation.run(time_interval=50, debug=False)  
+# rest of code to plot movie  
+```  
 
 - [] tidy up ```self._rotation``` implimentation (it is just a bunch of if states right now)  
-- [] note that m_gas is hard coded into ```simulation_isothermal.py```- can be implimented in the class structure
+- [] note that m_gas is hard coded into ```simulation_isothermal.py```- can be implimented in the class structure  
+- [] physical constants can be included in class  
