@@ -121,7 +121,7 @@ class discSimulation:
             result[0] = 20
             result[1] = 20
         elif temp == 'flat':
-            result = np.full(self._nx, 250)
+            result = np.full(self._nx, 288.16)
         else:
             raise Exception("Choose a valid temperature")
         return result
@@ -157,8 +157,11 @@ class discSimulation:
                 else:
                     result[i] = 0.125
         elif init_rho == 'atmosphere':
-            # Density of air is ~ 1kg/m^3
-            result = np.full(len(self._x), 1)
+            # Density of air at 300k
+            result = np.full(len(self._x), 0.7880072463768116)
+        elif init_rho == 'exp':
+            result = 1.2261845353019805 * \
+                np.exp(- self._x * 9.80665 * 0.02896968 / 288.16 / 8.314462618)
         elif init_rho == 'zero':
             result = np.full(self._nx, N * mu * m_h / 100)
         else:
@@ -252,7 +255,7 @@ class discSimulation:
         # Re-impose boundary conditions a last time (not strictly necessary)
         self.set_boundary()
 
-    def run(self, time_interval=10, verbose=True, debug=False, movie=False):
+    def run(self, time_interval=10, verbose=True, debug=False):
         if debug:
             self._debug_counter = 1
         for it in range(1, self._nt+1):
@@ -307,14 +310,6 @@ class discSimulation:
             self._rhou[:, it] = self._qrhou
             if self._rotation:
                 self._rhov[:, it] = self._qrhov
-        if movie:
-            print('generating movie')
-            '''
-            x_plot = self._x/AU + 100
-            rho_plot = data[:, 1]
-            rhou_plot = data[:, 2]
-            rhov_plot = data[:, 3]
-            '''
 
 
 # physical constants - mass in solar masses, length in m
@@ -340,6 +335,6 @@ if __name__ == '__main__':
     simulation.run(time_interval=20, debug=False, movie=False)
     '''
     # gravity test
-    simulation = discSimulation(500, 10000, 0, 1e5, 0.3, 'atmosphere',
-                                'flat', 'kep', 'mirror/free', 'superbee', rotation=False)
-    simulation.run(time_interval=10, debug=False, movie=False)
+    simulation = discSimulation(500, 50000, 0, 1e5, 0.3, 'exp',
+                                'flat', 'kep', 'mirror/free', 'van Leer', rotation=False)
+    simulation.run(time_interval=50, debug=False)
