@@ -6,7 +6,6 @@ Written by SC
 '''
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 class discSimulation:
@@ -22,23 +21,26 @@ class discSimulation:
         self._T = self.set_T(temp)
         self._rotation = rotation
 
+        # init counters
         self._counter = 1
         self._print_counter = 0
         self._init = True
 
+        # generate arrays needed
         self._x = self._x0 + (self._x1 - self._x0) * (np.arange(self._nx) / (self._nx - 1.))
+        # need to check x
         self._rho = np.zeros((self._nx, self._nt + 1))
         self._rhou = np.zeros((self._nx, self._nt + 1))
         if self._rotation:
             self._rhov = np.zeros((self._nx, self._nt + 1))
         self._time = np.zeros(self._nt + 1)
-
         self._xi = np.zeros(self._nx + 1)
         self._xi[1:self._nx] = 0.5 * (self._x[1:self._nx] + self._x[0:self._nx - 1])
         self._xi[0] = 2 * self._xi[1] - self._xi[2]
         self._xi[self._nx] = 2 * self._xi[self._nx - 1] - self._xi[self._nx - 2]
         self._dx = (self._xi[1:self._nx + 1] - self._xi[0:self._nx])
 
+        # stores initial conditions
         self._v = self.v_initial(init_v)
         self._rho[:, 0] = self.rho_initial(init_rho)
         if self._rotation:
@@ -101,6 +103,15 @@ class discSimulation:
                 self._qrhov[1] = np.sqrt(G*M_star/(self._x[1]+starDist)) * self._qrho[1]
                 self._qrhov[nx - 2] = self._qrhov[nx - 4]
                 self._qrhov[nx - 1] = self._qrhov[nx - 3]
+        elif self._bc == 'free/free':
+            self._qrho[0] = self._qrho[2]
+            self._qrho[1] = self._qrho[3]
+            self._qrhou[0] = self._qrhou[2]
+            self._qrhou[1] = self._qrhou[3]
+            self._qrho[nx - 2] = self._qrho[nx - 4]
+            self._qrho[nx - 1] = self._qrho[nx - 3]
+            self._qrhou[nx - 2] = self._qrhou[nx - 4]
+            self._qrhou[nx - 1] = self._qrhou[nx - 3]
         else:
             raise Exception("Choose valid BC")
 
@@ -110,7 +121,7 @@ class discSimulation:
             result[0] = 20
             result[1] = 20
         elif temp == 'flat':
-            result = np.full(self._nx, 100)
+            result = np.full(self._nx, 250)
         else:
             raise Exception("Choose a valid temperature")
         return result
@@ -227,7 +238,7 @@ class discSimulation:
         self._p = self._qrho * k * self._T / (mu * m_h)
         if self._rotation:
             v = self._qrhov / self._qrho
-        # Calculate graviational potiental
+        # Calculate graviational potiental (this could be removed out of loop as this is constant)
         F = G * M_star / (self._x + starDist)**2
         # Now add all external forces, for all cells except the ghost cells
         for ix in range(2, nx - 2):
@@ -250,18 +261,19 @@ class discSimulation:
             if self._rotation:
                 self._qrhov = self._rhov[:, it - 1]
 
+            # Calculates time step with CFL condition
             cs = np.sqrt(k * self._T / (mu * m_h))
             dum = self._dx / (cs + abs(self._qrhou / self._qrho))
-
             self._dt = self._cfl * min(dum)
             self._time[it] = self._time[it - 1] + self._dt
 
+            # Debug log
             if debug:
                 np.savetxt('debug/log{:03d}.dat'.format(self._debug_counter),
                            np.c_[self._qrho, self._qrhou], header='{}'.format(self._dt))
                 print("producing log{:03d}".format(self._debug_counter))
                 self._debug_counter += 1
-
+            # Deals with saving the initial conditions if time interval is not 1
             if (self._init and time_interval != 1):
                 if verbose:
                     print("Time step: {}, Time = {}, dt = {}".format(
@@ -274,6 +286,7 @@ class discSimulation:
                                np.c_[self._x, self._qrho, self._qrhou], header='{}'.format(self._time[it - 1]))
                 self._counter += 1
                 self._init = False
+            # deals with printing and saving results per time interval
             self._print_counter += 1
             if self._print_counter == time_interval:
                 if verbose:
@@ -287,7 +300,9 @@ class discSimulation:
                                np.c_[self._x, self._qrho, self._qrhou], header='{}'.format(self._time[it - 1]))
                 self._print_counter = 0
                 self._counter += 1
+            # proceeds in one step
             self.hydrostep()
+            # stores results
             self._rho[:, it] = self._qrho
             self._rhou[:, it] = self._qrhou
             if self._rotation:
@@ -314,7 +329,6 @@ k = 1.38e-23
 m_h = 1.673e-27
 mu = 1.3  # following Facchini et al. 2016
 N = 10**9.2
-T = 20
 gamma = 7. / 5.
 
 
@@ -326,6 +340,6 @@ if __name__ == '__main__':
     simulation.run(time_interval=20, debug=False, movie=False)
     '''
     # gravity test
-    simulation = discSimulation(500, 50000, 0, 1e5, 0.3, 'atmosphere',
-                                'flat', 'kep', 'mirror/free', 'van Leer', rotation=False)
-    simulation.run(time_interval=50, debug=False, movie=False)
+    simulation = discSimulation(500, 10000, 0, 1e5, 0.3, 'atmosphere',
+                                'flat', 'kep', 'mirror/free', 'superbee', rotation=False)
+    simulation.run(time_interval=10, debug=False, movie=False)

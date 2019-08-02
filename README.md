@@ -39,3 +39,5 @@ Also includes a general hydro solver
     * recreated atmosphere test in disc model (_grav files)  
 * 31/07  
     * working on atmosphere test in disc  
+* 01/08  
+    * still working on atmosphere test

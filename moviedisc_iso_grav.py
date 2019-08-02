@@ -25,27 +25,32 @@ T = 20
 gamma = 7. / 5.
 
 
+def solution(z):
+    # plot the analytic solution
+    return 101325*np.exp(-z / (7.2))
+
+
+'''
+data = np.loadtxt(files[0])
+x = data[:, 0]/1000 + 6.371e3
+x_plot = data[:, 0]/1000
+plt.plot(x_plot, solution(x_plot))
+plt.show()
+
+'''
 for file in sorted(files):
     data = np.loadtxt(file)
     # x = data[:, 0]/AU + 100
-    x = data[:, 0]/1000
+    x = data[:, 0]/1000 + 6.371e6
     rho = data[:, 1]
-    rhou = data[:, 2]
 
-    u = rhou/rho
-    p = rho * k * T / (mu * m_h)
+    p = rho * k * T / (mu * m_h) / 1000
 
-    '''
-    plt.plot(x, rho, '.-')
-    plt.grid()
-    plt.xlabel(r'R (AU)')
-    plt.ylabel(r'$\rho$ $(kgm^{-3})$')
-    '''
-
+    # plt.plot(x, solution(x))
     plt.plot(x, p, '.-')
     plt.grid()
     plt.xlabel(r'R (km)')
-    plt.ylabel(r'$P$ $(Pa)$')
+    plt.ylabel(r'$P$ $(kPa)$')
     # plt.xlim(100, 200)
 
     plt.tight_layout()
