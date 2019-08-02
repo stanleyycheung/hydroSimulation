@@ -1,10 +1,16 @@
 # hydroSimulation  
-Modules needed: numpy, matplotlib  
+Written in Python 3  
+Modules needed: ```numpy```, ```matplotlib```  
 UROP project (July - Aug 2019) under Dr. Haworth in Imperial College Astrophysics Department  
 ## Description  
 1D pseudo disc-wind model  
 Also includes a general hydro solver  
-Test cases:  
+Features: includes rotational motion,
+### Instructions:  
+Running ```solver.py``` will produce .dat files in corresponding output  
+Running the corresponding ```movie.py``` will produce .png in corresponding movie folder
+Use ffmpeg command in the ```movie.py``` file to produce .mp4  
+### Test cases:  
 * ```sodshock.py``` for sodshock case  
     *  includes energy equation and advection  
 * ``` simulation_isothermal.py``` includes atmosphere test  
@@ -12,12 +18,13 @@ Test cases:
     * ```atmosphere.py``` for initial atmosphere - doesn't work  
 
 ## Mainfiles (in order of importance)  
+* **```simulation_isothermal.py```** isothermal hydro simulation - no energy advection  
+    * fully documented  
 * ```simulation.py``` full hydro simulation - includes rotation and energy advection and gravity  
-* ```simulation_isothermal.py``` isothermal hydro simulation - no energy advection  
 * ```sodshock.py``` sod shock test - energy advection but no rotation or gravity  
 * various ```plot.py``` files - plotting specific output.dat files  
 * various ```movie.py``` files - taking .dat files and producing graphs for movie  
-* /debug folder - if ```python debug = True```, will output log in this folder
+* /debug folder - if ```debug = True```, will output log in this folder
 * various /output folders - where solver outputs .dat raw data files  
 * various /movie folders - where ```movie.py``` output .png files  
 * /FRIED_grid - examples of FRIED_grid plots  
@@ -65,8 +72,23 @@ Test cases:
         * no energy equation  
 * 30/07  
     * nothing works :'(  
-    * recreated atmosphere test in disc model (/~_grav files)  
+    * recreated atmosphere test in disc model (```/~_grav.py``` files)  
 * 31/07  
     * working on atmosphere test in disc  
 * 01/08  
     * still working on atmosphere test  
+    * updated documentation  
+
+## Todo  
+- [] use ```simulation_isothermal.py``` or ```simulation.py``` as a class to automate plotting and making movie into one file.  
+
+⋅⋅⋅Example (can be used in ```moviedisc_iso_grav.py```):  
+⋅⋅⋅```python
+⋅⋅⋅import simulation_isothermal  
+⋅⋅⋅simulation = discSimulation(500, 50000, 0, 2e4, 0.3, 'exp', 'flat', 'kep', 'mirror/free', 'van Leer', rotation=False)  
+⋅⋅⋅simulation.run(time_interval=50, debug=False)  
+⋅⋅⋅# rest of code to plot movie  
+⋅⋅⋅```  
+
+- [] tidy up ```self._rotation``` implimentation (it is just a bunch of if states right now)  
+- [] note that m_gas is hard coded into ```simulation_isothermal.py```- can be implimented in the class structure

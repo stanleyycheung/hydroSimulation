@@ -10,7 +10,25 @@ import numpy as np
 
 class discSimulation:
     def __init__(self, nx, nt, x0, x1, cfl, init_rho, temp, init_v, bc, fluxlim, rotation=True):
+        '''
+        Main attributes:
+            Init attributes:
+            _x (numpy arr): grid of x values
+            _x0 and _x1 (float): start and end of grid
+            _nx (int): number of cells
+            _nt (int): number of time steps
+            _cfl (float): CFL parameter (usually 0.3)
+            _init_v/_init_rho (string): specifies initial velocity and density
+            _T (numpy arr): temperature across grid
+            _bc (string): specifies nature of boundary conditions
+            _rotation (bool): if rotation is considered or not
 
+            Created attributes:
+            _rho/_rhou/_rhov (numpy arr(_nx, _nt + 1)): stores data of each time step in column
+            _xi (numpy arr(_nx + 1)): cell interfaces
+            _dx (numpy arr(_nx)): difference in _x
+            _time (numpy arr(_nx + 1)): keeps tracks of the time with dt steps
+        '''
         self._nx = nx
         self._nt = nt
         self._x0 = x0
@@ -48,6 +66,15 @@ class discSimulation:
             self._rhov[:, 0] = self._rho[:, 0] * self._v
 
     def set_boundary(self):
+        '''
+        Sets _qrho/_qrhou/_qrhov corresponding to the boundary conditions
+        Options:
+            - 'periodic' - left and right: periodic
+            - 'mirror' - left and right: reflective
+            - 'mirror/free' - left: reflective; right: free outflow, no inflow
+            - 'disc' - left: fixed density and Keplarian rotation; right: free outflow/inflow
+            - 'free/ free' (untested) - left and right: free outflow/inflow
+        '''
         # Get the number of grid points including the ghost cells
         nx = len(self._qrho)  # maybe redudant
         # If periodic, then install periodic BC, using two ghost cells on each side
@@ -74,15 +101,19 @@ class discSimulation:
             self._qrhou[nx - 1] = -self._qrhou[nx - 4]
         elif self._bc == 'mirror/free':
             # Left BC
-            self._qrho[0] = self._qrho[3]
-            self._qrho[1] = self._qrho[2]
-            self._qrhou[0] = -self._qrhou[3]
-            self._qrhou[1] = -self._qrhou[2]
+            self._qrho[0] = 101325 * m_air / (k * T)
+            self._qrho[1] = 101325 * m_air / (k * T)
+            self._qrhou[0] = 0
+            self._qrhou[1] = 0
+            # self._qrho[0] = self._qrho[3]
+            # self._qrho[1] = self._qrho[2]
+            # self._qrhou[0] = -self._qrhou[3]
+            # self._qrhou[1] = -self._qrhou[2]
             # Right BC
-            self._qrho[nx - 2] = self._qrho[nx - 4]
+            self._qrho[nx - 2] = self._qrho[nx - 3]
             self._qrho[nx - 1] = self._qrho[nx - 3]
-            self._qrhou[nx - 2] = -abs(self._qrhou[nx - 4])
-            self._qrhou[nx - 1] = -abs(self._qrhou[nx - 3])
+            self._qrhou[nx - 2] = self._qrhou[nx - 3]
+            self._qrhou[nx - 1] = self._qrhou[nx - 3]
             if self._rotation:
                 self._qrhov[0] = -self._qrhov[2]
                 self._qrhov[1] = -self._qrhov[3]
@@ -117,6 +148,12 @@ class discSimulation:
             raise Exception("Choose valid BC")
 
     def set_T(self, temp):
+        '''
+        Sets _T to corresponding value
+        Options:
+            - 'default': all at 100K except first 2 cells at 20K - used in psuedo disc model
+            - 'flat': all at 288.16K - used in atmosphere test
+        '''
         if temp == 'default':
             result = np.full(self._nx, 100)
             result[0] = 20
@@ -128,7 +165,13 @@ class discSimulation:
         return result
 
     def v_initial(self, init_v):
-        # Keplarian
+        '''
+        Sets _v to corresponding value
+        Options:
+            - 'kep': Keplarian rotation
+            - 'step': half at 10m/s, half at 5m/s - used to test for advection
+            - 'zero': set to 10e-5m/s
+        '''
         if init_v == 'kep':
             result = np.sqrt(G*M_star/(self._x+starDist))
         elif init_v == 'step':
@@ -145,6 +188,15 @@ class discSimulation:
         return result
 
     def rho_initial(self, init_rho):
+        '''
+        Sets _rho to corresponding value
+        Options:
+            - 'gaussian': set to Gaussian with sigma as 10% of range - used in examples
+            - 'sod': half at 1kg/m^3, half at 0.125kg/m^3
+            - 'atmosphere': all at 0.788kg/m^3 corresponds to
+            - 'exp':
+            - 'zero':
+        '''
         if init_rho == 'gaussian':
             xmid = 0.5 * (self._x0 + self._x1)
             dg = 0.1 * (self._x1 - self._x0)
@@ -324,7 +376,8 @@ m_h = 1.673e-27
 mu = 1.3  # following Facchini et al. 2016
 N = 10**9.2
 gamma = 7. / 5.
-
+T = 288.16
+m_air = 28.97/1000/(6.02e23)
 
 if __name__ == '__main__':
     '''
